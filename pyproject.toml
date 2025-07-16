@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "playwright-s3-snapshot"
 version = "0.1.0"
 description = "CLI tool and AWS Lambda function for taking Playwright screenshots and uploading to S3"
-authors = [{name = "Your Name", email = "your.email@example.com"}]
+authors = [{name = "Aluizio Lira", email = "alumlira@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.12"
@@ -25,8 +25,13 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "pytest-asyncio>=0.21.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
+    "moto[s3]>=4.2.0",
+    "httpx>=0.24.0",
 ]
 
 [project.scripts]
@@ -45,11 +50,41 @@ target-version = ['py312']
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "C4", "T20"]
-ignore = ["E501"]  # Line too long (handled by black)
+ignore = ["E501", "T201", "S108"]  # Line too long (black), print statements (CLI tool), temp directory usage
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = [
+    "--cov=src/playwright_s3_snapshot",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "--cov-fail-under=15",
+    "--asyncio-mode=auto"
+]
+
+[tool.coverage.run]
+source = ["src/playwright_s3_snapshot"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/build/*",
+    "*/dist/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if False:",
+]
