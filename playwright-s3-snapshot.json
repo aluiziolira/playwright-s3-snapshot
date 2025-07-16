@@ -1,0 +1,10 @@
+{
+  "bucket": "my-screenshots-bucket",
+  "prefix": "qa-screenshots",
+  "region": "us-east-1",
+  "width": 1920,
+  "height": 1080,
+  "timeout": 30000,
+  "retries": 3,
+  "verbose": false
+}

@@ -17,7 +17,7 @@ echo "Stack: $STACK_NAME-$ENVIRONMENT"
 
 # Step 1: Build and push Docker image
 echo "📦 Building Docker image..."
-docker build -t playwright-s3-snapshot:latest .
+docker buildx build --platform linux/amd64 --load -t playwright-s3-snapshot:latest .
 
 # Step 2: Create ECR repository if it doesn't exist
 echo "📡 Setting up ECR repository..."
@@ -44,6 +44,7 @@ sam deploy \
     BucketName=$BUCKET_NAME \
     Environment=$ENVIRONMENT \
   --region $AWS_REGION \
+  --resolve-image-repos \
   --no-confirm-changeset
 
 # Step 6: Get outputs

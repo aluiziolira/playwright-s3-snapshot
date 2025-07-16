@@ -14,6 +14,7 @@ from playwright_s3_snapshot.lambda_handler import lambda_handler, batch_handler
 
 class MockContext:
     """Mock Lambda context for local testing."""
+
     def __init__(self):
         self.function_name = "test-function"
         self.function_version = "1"
@@ -25,7 +26,7 @@ class MockContext:
 def test_single_screenshot():
     """Test single screenshot Lambda function."""
     print("🧪 Testing single screenshot Lambda function...")
-    
+
     event = {
         "url": "https://example.com",
         "bucket": os.getenv("TEST_BUCKET", "test-bucket"),
@@ -33,9 +34,9 @@ def test_single_screenshot():
         "width": 1280,
         "height": 720,
     }
-    
+
     print(f"Event: {json.dumps(event, indent=2)}")
-    
+
     try:
         result = lambda_handler(event, MockContext())
         print(f"✅ Result: {json.dumps(result, indent=2)}")
@@ -48,18 +49,15 @@ def test_single_screenshot():
 def test_batch_screenshots():
     """Test batch screenshot Lambda function."""
     print("\n🧪 Testing batch screenshot Lambda function...")
-    
+
     event = {
-        "urls": [
-            "https://example.com",
-            "https://httpbin.org/html"
-        ],
+        "urls": ["https://example.com", "https://httpbin.org/html"],
         "bucket": os.getenv("TEST_BUCKET", "test-bucket"),
         "prefix": "test-batch/",
     }
-    
+
     print(f"Event: {json.dumps(event, indent=2)}")
-    
+
     try:
         result = batch_handler(event, MockContext())
         print(f"✅ Result: {json.dumps(result, indent=2)}")
@@ -72,10 +70,10 @@ def test_batch_screenshots():
 def test_error_handling():
     """Test error handling."""
     print("\n🧪 Testing error handling...")
-    
+
     # Test missing URL
     event = {"bucket": "test-bucket"}
-    
+
     try:
         result = lambda_handler(event, MockContext())
         print(f"Expected error result: {json.dumps(result, indent=2)}")
@@ -88,26 +86,26 @@ def test_error_handling():
 if __name__ == "__main__":
     print("🚀 Local Lambda Testing")
     print("=" * 50)
-    
+
     # Set test environment variables
     os.environ.setdefault("AWS_REGION", "us-east-1")
-    
+
     success_count = 0
     total_tests = 3
-    
+
     # Run tests
     if test_single_screenshot():
         success_count += 1
-    
+
     if test_batch_screenshots():
         success_count += 1
-    
+
     if test_error_handling():
         success_count += 1
-    
+
     print("\n" + "=" * 50)
     print(f"📊 Test Results: {success_count}/{total_tests} passed")
-    
+
     if success_count == total_tests:
         print("✅ All tests passed!")
         sys.exit(0)

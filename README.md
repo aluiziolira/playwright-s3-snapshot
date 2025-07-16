@@ -1,343 +1,170 @@
 # Playwright S3 Snapshot
 
-A Python CLI tool and AWS Lambda function for taking full-page screenshots of web pages using Playwright and uploading them to S3.
+A powerful command-line tool and AWS Lambda function to capture, store, and manage web page snapshots on Amazon S3.
 
-## Features
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Playwright](https://img.shields.io/badge/Playwright-ready-2EAD33?logo=playwright)](https://playwright.dev/)
+[![AWS](https://img.shields.io/badge/AWS-232F3E?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Pytest](https://img.shields.io/badge/testing-pytest-0a9edc?logo=pytest)](https://pytest.org)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![linting: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-- 📸 Take full-page screenshots of any URL using Playwright
-- ☁️ Upload screenshots to S3 with timestamped naming
-- 🔧 Comprehensive CLI with validation and configuration support
-- 📁 Batch processing from URL files
-- 🔄 Retry logic for failed operations
-- 🔧 Configuration file and environment variable support
-- 🚀 AWS Lambda deployment for serverless operation
 
-## Installation
+## Project Overview
 
-```bash
-pip install -e .
-playwright install chromium
+Playwright S3 Snapshot is a versatile tool designed for developers, QA engineers, and content managers who need to automate the process of capturing web page screenshots. It offers a dual interface: a powerful Command-Line Interface (CLI) for local and scripted tasks, and a serverless AWS Lambda function for scalable, event-driven operations. The core functionality revolves around using Playwright to render web pages accurately and Boto3 to seamlessly upload the resulting snapshots to an Amazon S3 bucket for reliable storage and easy access.
+
+This project solves the common challenge of automating visual regression testing, website monitoring, and content archival in a way that is both cost-effective and highly scalable.
+
+## Key Features
+
+-   **Dual-Mode Operation**: Use it as a feature-rich CLI on your local machine or deploy it as a serverless function on AWS Lambda.
+-   **S3 Integration**: Automatically uploads screenshots to a specified S3 bucket with customizable prefixes.
+-   **Flexible Configuration**: Configure via command-line arguments, environment variables, or a JSON configuration file.
+-   **Batch Processing**: Take screenshots of multiple URLs from a text file in a single command.
+-   **Customizable Viewport**: Define custom width and height for screenshots to test different resolutions.
+-   **Serverless Architecture**: Built with AWS SAM for easy deployment and scaling, including API Gateway integration.
+-   **Robust Error Handling**: Includes retry logic for network-related failures.
+-   **Comprehensive Testing**: High test coverage with Pytest and Moto for mocking AWS services.
+
+## Live Demo
+
+Below are some examples of the tool in action.
+
+**CLI Deployment Demo:**
+![CLI Demo](docs/deploy-demo.gif)
+
+**Lambda API Integration Demo:**
+![Lambda API Demo](docs/lambda-api-demo.gif)
+
+## Tech Stack & Tools
+
+This project is built with a modern, robust set of tools and technologies.
+
+-   **Core Language**:
+    -   ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+-   **Backend & Frameworks**:
+    -   **Browser Automation**: ![Playwright](https://img.shields.io/badge/Playwright-2EAD33?logo=playwright)
+    -   **AWS SDK**: ![Boto3](https://img.shields.io/badge/Boto3-FF9900?logo=boto3)
+    -   **CLI**: ![Argparse](https://img.shields.io/badge/Argparse-3776AB?logo=python)
+-   **Testing**:
+    -   **Test Runner**: ![Pytest](https://img.shields.io/badge/Pytest-0A9EDC?logo=pytest)
+    -   **AWS Mocking**: ![Moto](https://img.shields.io/badge/Moto-E8E8E8)
+    -   **Code Coverage**: ![Coverage.py](https://img.shields.io/badge/Coverage-A4373D)
+-   **DevOps & Deployment**:
+    -   **Containerization**: ![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+    -   **Serverless Framework**: ![AWS SAM](https://img.shields.io/badge/AWS_SAM-F29100?logo=amazon-aws)
+    -   **CI/CD**: Makefile for streamlined development tasks.
+-   **Code Quality**:
+    -   **Formatter**: ![Black](https://img.shields.io/badge/Black-000000?logo=python)
+    -   **Linter**: ![Ruff](https://img.shields.io/badge/Ruff-D3722A?logo=ruff)
+
+## Getting Started
+
+Follow these instructions to get a local copy of the project up and running for development and testing purposes.
+
+### Prerequisites
+
+-   Python 3.12+
+-   pip (Python package installer)
+-   An AWS account and configured AWS CLI (for S3 upload and deployment)
+
+### Installation
+
+1.  **Clone the repository:**
+    ```sh
+    git clone https://github.com/aluiziolira/playwright-s3-snapshot.git
+    cd playwright-s3-snapshot
+    ```
+
+2.  **Create and activate a virtual environment:**
+    ```sh
+    python -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    ```
+
+3.  **Install dependencies:**
+    The project uses `setuptools` for package management. Install it in editable mode along with development dependencies:
+    ```sh
+    pip install -e ".[dev]"
+    ```
+
+4.  **Install Playwright browsers:**
+    This command downloads the necessary browser binaries for Playwright.
+    ```sh
+    playwright install chromium
+    ```
+
+### Usage
+
+#### Local Screenshots
+
+To take a screenshot and save it locally:
+```sh
+python -m playwright_s3_snapshot.cli https://example.com --output my-screenshot.png
 ```
 
-## Quick Start
+#### Uploading to S3
 
-```bash
-# Single screenshot (local file)
-python -m playwright_s3_snapshot.cli https://example.com
+To take a screenshot and upload it directly to an S3 bucket:
+```sh
+export AWS_ACCESS_KEY_ID="YOUR_AWS_KEY"
+export AWS_SECRET_ACCESS_KEY="YOUR_AWS_SECRET"
 
-# Upload to S3
-python -m playwright_s3_snapshot.cli https://example.com --bucket my-bucket --prefix qa/
-
-# Create configuration file
-python -m playwright_s3_snapshot.cli --create-config
-
-# Batch processing
-python -m playwright_s3_snapshot.cli --url-file urls.txt --bucket my-bucket
+python -m playwright_s3_snapshot.cli https://example.com --bucket your-s3-bucket-name --prefix snapshots/
 ```
 
-## CLI Usage
+#### Running Tests
 
-### Basic Commands
-```bash
-# Local screenshot
-python -m playwright_s3_snapshot.cli https://example.com
-python -m playwright_s3_snapshot.cli https://example.com --output screenshot.png
-
-# S3 upload
-python -m playwright_s3_snapshot.cli https://example.com --bucket my-bucket
-python -m playwright_s3_snapshot.cli https://example.com --bucket my-bucket --prefix qa/
-
-# Batch processing
-python -m playwright_s3_snapshot.cli --url-file urls.txt --bucket my-bucket
-```
-
-### Advanced Options
-```bash
-# Custom viewport and timeout
-python -m playwright_s3_snapshot.cli https://example.com --width 1280 --height 720 --timeout 60000
-
-# Retry logic and verbose output
-python -m playwright_s3_snapshot.cli https://example.com --retries 3 --verbose
-
-# Quiet mode (only errors)
-python -m playwright_s3_snapshot.cli https://example.com --quiet
-```
-
-### Configuration
-
-#### Configuration File
-Create a configuration file to set default values:
-
-```bash
-python -m playwright_s3_snapshot.cli --create-config
-```
-
-This creates `playwright-s3-snapshot.json`:
-```json
-{
-  "bucket": "my-screenshots-bucket",
-  "prefix": "qa-screenshots", 
-  "region": "us-east-1",
-  "width": 1920,
-  "height": 1080,
-  "timeout": 30000,
-  "retries": 3,
-  "verbose": false
-}
-```
-
-Configuration files are loaded from (in order):
-- `playwright-s3-snapshot.json` (current directory)
-- `.playwright-s3-snapshot.json` (current directory)
-- `~/.playwright-s3-snapshot.json` (home directory)
-
-#### Environment Variables
-```bash
-export PS3S_BUCKET="my-bucket"
-export PS3S_PREFIX="screenshots/"
-export PS3S_REGION="us-west-2"
-export PS3S_WIDTH=1280
-export PS3S_HEIGHT=720
-export PS3S_TIMEOUT=60000
-export PS3S_RETRIES=3
-export PS3S_VERBOSE=true
-```
-
-### Batch Processing
-
-Create a file with URLs (one per line):
-```
-# urls.txt
-https://example.com
-https://httpbin.org/html
-google.com
-# Comments are ignored
-```
-
-Process all URLs:
-```bash
-python -m playwright_s3_snapshot.cli --url-file urls.txt --bucket my-bucket --verbose
-```
-
-## AWS Setup
-
-### Credentials
-Set AWS credentials via:
-- Environment variables: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
-- AWS CLI: `aws configure`
-- IAM roles (for Lambda/EC2)
-
-### S3 Permissions
-Required S3 permissions:
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:PutObjectAcl"
-      ],
-      "Resource": "arn:aws:s3:::your-bucket/*"
-    }
-  ]
-}
-```
-
-## CLI Reference
-
-### Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `url` | URL to screenshot | Required |
-| `--url-file` | File with URLs (one per line) | None |
-| `--bucket` | S3 bucket name | None |
-| `--prefix` | S3 key prefix | Empty |
-| `--region` | AWS region | us-east-1 |
-| `--output` | Local output path | Auto-generated |
-| `--width` | Viewport width (px) | 1920 |
-| `--height` | Viewport height (px) | 1080 |
-| `--timeout` | Page load timeout (ms) | 30000 |
-| `--retries` | Retry attempts | 1 |
-| `--verbose, -v` | Verbose output | False |
-| `--quiet, -q` | Suppress output | False |
-| `--create-config` | Create config file | False |
-
-### Exit Codes
-- `0`: Success
-- `1`: General error
-- `2`: Invalid arguments
-- `130`: Interrupted by user (Ctrl+C)
-
-## Development
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -e ".[dev]"
-playwright install chromium
-```
-
-## Testing
-
-```bash
+To ensure everything is set up correctly, run the test suite:
+```sh
 pytest
 ```
 
 ## AWS Lambda Deployment
 
-Deploy as a serverless function for scalable screenshot processing.
+For a scalable solution, deploy the application as a serverless function using AWS SAM.
 
 ### Prerequisites
 
-1. **AWS CLI configured:**
-   ```bash
-   aws configure
-   ```
+-   AWS CLI (configured with `aws configure`)
+-   AWS SAM CLI
+-   Docker
 
-2. **SAM CLI installed:**
-   ```bash
-   # macOS
-   brew install aws-sam-cli
-   
-   # Windows
-   # Download from: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
-   ```
+### Deployment Steps
 
-3. **Docker installed** (for container builds)
+1.  **Build the SAM application:**
+    ```sh
+    sam build --use-container
+    ```
 
-### Quick Deploy
-
-```bash
-# Deploy with default settings
-./deploy.sh
-
-# Or deploy with custom settings
-ENVIRONMENT=prod BUCKET_NAME=my-screenshots ./deploy.sh
-```
-
-### Manual Deployment
-
-1. **Build container image:**
-   ```bash
-   docker build -t playwright-s3-snapshot:latest .
-   ```
-
-2. **Deploy infrastructure:**
-   ```bash
-   sam deploy \
-     --template-file template.yaml \
-     --stack-name playwright-s3-snapshot-dev \
-     --capabilities CAPABILITY_IAM \
-     --parameter-overrides BucketName=my-screenshots
-   ```
+2.  **Deploy to AWS:**
+    ```sh
+    sam deploy --guided
+    ```
+    Follow the on-screen prompts to name your stack and provide parameters like the S3 bucket name. The `deploy.sh` script provides a convenient wrapper for this process.
 
 ### API Usage
 
-Once deployed, use the API Gateway endpoint:
+Once deployed, you can trigger the Lambda function via its API Gateway endpoint:
 
-```bash
-# Single screenshot
-curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/dev/screenshot \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "url": "https://example.com",
-    "width": 1920,
-    "height": 1080,
-    "prefix": "api-screenshots/"
-  }'
-
-# Batch screenshots
-curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/dev/batch-screenshot \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "urls": ["https://example.com", "https://google.com"],
-    "prefix": "batch-screenshots/"
-  }'
-```
-
-### Lambda Function Configuration
-
-#### Environment Variables
-- `BUCKET_NAME`: S3 bucket for screenshots
-- `KEY_PREFIX`: Default S3 key prefix
-- `VIEWPORT_WIDTH`: Default viewport width (1920)
-- `VIEWPORT_HEIGHT`: Default viewport height (1080)
-- `WAIT_TIMEOUT`: Page load timeout in ms (30000)
-
-#### Event Structure
-```json
-{
-  "url": "https://example.com",
-  "bucket": "my-bucket",
-  "prefix": "screenshots/",
+```sh
+curl -X POST https://<your-api-id>.execute-api.us-east-1.amazonaws.com/Prod/screenshot \
+-H "Content-Type: application/json" \
+-d '{
+  "url": "https://www.amazon.com",
   "width": 1920,
-  "height": 1080,
-  "timeout": 30000,
-  "region": "us-east-1"
-}
+  "height": 1080
+}'
 ```
 
-#### Response Structure
-```json
-{
-  "statusCode": 200,
-  "body": {
-    "success": true,
-    "result": {
-      "url": "https://example.com",
-      "s3_url": "https://bucket.s3.amazonaws.com/key",
-      "s3_key": "screenshots/2025-07-15_143022.png",
-      "timestamp": "2025-07-15T14:30:22",
-      "file_size": 55531
-    }
-  }
-}
-```
+## License
 
-### Local Testing
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
-```bash
-# Test with mock S3 (offline)
-python test-lambda-offline.py
+## Contact
 
-# Test with real AWS credentials
-python test-lambda-local.py
-```
+Aluizio Lira - [in/aluiziolira](https://www.linkedin.com/in/aluiziolira) - alumlira@gmail.com
 
-### Infrastructure Components
-
-- **Lambda Functions:** Single and batch screenshot processing
-- **API Gateway:** RESTful API endpoints
-- **S3 Bucket:** Screenshot storage with lifecycle policies
-- **ECR Repository:** Container image storage
-- **IAM Roles:** Minimal required permissions
-
-### Monitoring
-
-- **CloudWatch Logs:** Function execution logs
-- **CloudWatch Metrics:** Invocation count, duration, errors
-- **X-Ray Tracing:** Request tracing (optional)
-
-### Cost Optimization
-
-- **Lambda:** Pay per request (first 1M requests/month free)
-- **S3:** Lifecycle policies auto-delete old screenshots (30 days)
-- **API Gateway:** Pay per API call
-- **Container Images:** Optimized multi-stage build
-
-### Troubleshooting
-
-1. **Container too large:** Use multi-stage builds and minimize dependencies
-2. **Timeout errors:** Increase Lambda timeout (max 15 minutes)
-3. **Memory errors:** Increase Lambda memory (max 10GB)
-4. **Playwright errors:** Ensure browser dependencies in container
-
-### Security
-
-- **IAM Permissions:** Minimal S3 write access only
-- **VPC:** Optional VPC deployment for network isolation
-- **Encryption:** S3 server-side encryption enabled
-- **CORS:** Configurable origin restrictions
+Project Link: [https://github.com/aluiziolira/playwright-s3-snapshot](https://github.com/aluiziolira/playwright-s3-snapshot)
