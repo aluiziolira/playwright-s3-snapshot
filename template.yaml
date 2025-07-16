@@ -1,0 +1,223 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Playwright S3 Snapshot - Serverless screenshot service'
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: S3 bucket name for storing screenshots
+    Default: playwright-screenshots-bucket
+  
+  KeyPrefix:
+    Type: String
+    Description: Default S3 key prefix for screenshots
+    Default: screenshots/
+  
+  Environment:
+    Type: String
+    Description: Environment name (dev, staging, prod)
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 3008
+    Environment:
+      Variables:
+        BUCKET_NAME: !Ref BucketName
+        KEY_PREFIX: !Ref KeyPrefix
+        ENVIRONMENT: !Ref Environment
+
+Resources:
+  # S3 Bucket for screenshots
+  ScreenshotBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${BucketName}-${Environment}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldScreenshots
+            Status: Enabled
+            ExpirationInDays: 30
+            NoncurrentVersionExpirationInDays: 7
+
+  # Lambda function for single screenshots
+  ScreenshotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "playwright-screenshot-${Environment}"
+      PackageType: Image
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/playwright-s3-snapshot:latest"
+      ImageConfig:
+        Command:
+          - playwright_s3_snapshot.lambda_handler.lambda_handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ScreenshotBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ScreenshotBucket
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: /screenshot
+            Method: post
+            RestApiId: !Ref ScreenshotApi
+
+  # Lambda function for batch screenshots
+  BatchScreenshotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "playwright-batch-screenshot-${Environment}"
+      PackageType: Image
+      ImageUri: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/playwright-s3-snapshot:latest"
+      ImageConfig:
+        Command:
+          - playwright_s3_snapshot.lambda_handler.batch_handler
+      Timeout: 900  # 15 minutes for batch processing
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ScreenshotBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ScreenshotBucket
+      Events:
+        ApiGateway:
+          Type: Api
+          Properties:
+            Path: /batch-screenshot
+            Method: post
+            RestApiId: !Ref ScreenshotApi
+
+  # API Gateway
+  ScreenshotApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub "playwright-screenshot-api-${Environment}"
+      StageName: !Ref Environment
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'POST, OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: Playwright Screenshot API
+          version: 1.0.0
+        paths:
+          /screenshot:
+            post:
+              summary: Take a single screenshot
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [url]
+                      properties:
+                        url:
+                          type: string
+                          format: uri
+                        bucket:
+                          type: string
+                        prefix:
+                          type: string
+                        width:
+                          type: integer
+                          default: 1920
+                        height:
+                          type: integer
+                          default: 1080
+                        timeout:
+                          type: integer
+                          default: 30000
+              responses:
+                200:
+                  description: Screenshot taken successfully
+                500:
+                  description: Error taking screenshot
+            options:
+              summary: CORS preflight
+              responses:
+                200:
+                  description: CORS headers
+          /batch-screenshot:
+            post:
+              summary: Take multiple screenshots
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [urls]
+                      properties:
+                        urls:
+                          type: array
+                          items:
+                            type: string
+                            format: uri
+                        bucket:
+                          type: string
+                        prefix:
+                          type: string
+              responses:
+                200:
+                  description: Batch screenshots completed
+                500:
+                  description: Error processing batch
+
+  # ECR Repository for container images
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: playwright-s3-snapshot
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+
+Outputs:
+  ScreenshotApiUrl:
+    Description: API Gateway endpoint URL for screenshot service
+    Value: !Sub "https://${ScreenshotApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"
+
+  ScreenshotBucketName:
+    Description: Name of the S3 bucket for screenshots
+    Value: !Ref ScreenshotBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-BucketName"
+
+  ECRRepositoryUri:
+    Description: URI of the ECR repository
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ECRUri"

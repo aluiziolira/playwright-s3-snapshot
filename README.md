@@ -188,4 +188,156 @@ pytest
 
 ## AWS Lambda Deployment
 
-Coming in Phase 4...
+Deploy as a serverless function for scalable screenshot processing.
+
+### Prerequisites
+
+1. **AWS CLI configured:**
+   ```bash
+   aws configure
+   ```
+
+2. **SAM CLI installed:**
+   ```bash
+   # macOS
+   brew install aws-sam-cli
+   
+   # Windows
+   # Download from: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html
+   ```
+
+3. **Docker installed** (for container builds)
+
+### Quick Deploy
+
+```bash
+# Deploy with default settings
+./deploy.sh
+
+# Or deploy with custom settings
+ENVIRONMENT=prod BUCKET_NAME=my-screenshots ./deploy.sh
+```
+
+### Manual Deployment
+
+1. **Build container image:**
+   ```bash
+   docker build -t playwright-s3-snapshot:latest .
+   ```
+
+2. **Deploy infrastructure:**
+   ```bash
+   sam deploy \
+     --template-file template.yaml \
+     --stack-name playwright-s3-snapshot-dev \
+     --capabilities CAPABILITY_IAM \
+     --parameter-overrides BucketName=my-screenshots
+   ```
+
+### API Usage
+
+Once deployed, use the API Gateway endpoint:
+
+```bash
+# Single screenshot
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/dev/screenshot \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "url": "https://example.com",
+    "width": 1920,
+    "height": 1080,
+    "prefix": "api-screenshots/"
+  }'
+
+# Batch screenshots
+curl -X POST https://your-api-id.execute-api.us-east-1.amazonaws.com/dev/batch-screenshot \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "urls": ["https://example.com", "https://google.com"],
+    "prefix": "batch-screenshots/"
+  }'
+```
+
+### Lambda Function Configuration
+
+#### Environment Variables
+- `BUCKET_NAME`: S3 bucket for screenshots
+- `KEY_PREFIX`: Default S3 key prefix
+- `VIEWPORT_WIDTH`: Default viewport width (1920)
+- `VIEWPORT_HEIGHT`: Default viewport height (1080)
+- `WAIT_TIMEOUT`: Page load timeout in ms (30000)
+
+#### Event Structure
+```json
+{
+  "url": "https://example.com",
+  "bucket": "my-bucket",
+  "prefix": "screenshots/",
+  "width": 1920,
+  "height": 1080,
+  "timeout": 30000,
+  "region": "us-east-1"
+}
+```
+
+#### Response Structure
+```json
+{
+  "statusCode": 200,
+  "body": {
+    "success": true,
+    "result": {
+      "url": "https://example.com",
+      "s3_url": "https://bucket.s3.amazonaws.com/key",
+      "s3_key": "screenshots/2025-07-15_143022.png",
+      "timestamp": "2025-07-15T14:30:22",
+      "file_size": 55531
+    }
+  }
+}
+```
+
+### Local Testing
+
+```bash
+# Test with mock S3 (offline)
+python test-lambda-offline.py
+
+# Test with real AWS credentials
+python test-lambda-local.py
+```
+
+### Infrastructure Components
+
+- **Lambda Functions:** Single and batch screenshot processing
+- **API Gateway:** RESTful API endpoints
+- **S3 Bucket:** Screenshot storage with lifecycle policies
+- **ECR Repository:** Container image storage
+- **IAM Roles:** Minimal required permissions
+
+### Monitoring
+
+- **CloudWatch Logs:** Function execution logs
+- **CloudWatch Metrics:** Invocation count, duration, errors
+- **X-Ray Tracing:** Request tracing (optional)
+
+### Cost Optimization
+
+- **Lambda:** Pay per request (first 1M requests/month free)
+- **S3:** Lifecycle policies auto-delete old screenshots (30 days)
+- **API Gateway:** Pay per API call
+- **Container Images:** Optimized multi-stage build
+
+### Troubleshooting
+
+1. **Container too large:** Use multi-stage builds and minimize dependencies
+2. **Timeout errors:** Increase Lambda timeout (max 15 minutes)
+3. **Memory errors:** Increase Lambda memory (max 10GB)
+4. **Playwright errors:** Ensure browser dependencies in container
+
+### Security
+
+- **IAM Permissions:** Minimal S3 write access only
+- **VPC:** Optional VPC deployment for network isolation
+- **Encryption:** S3 server-side encryption enabled
+- **CORS:** Configurable origin restrictions
